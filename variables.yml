@@ -1,0 +1,26 @@
+---
+vars:
+  GLOBAL: "global"
+
+secrets:
+  SECRET_TEST: "secret/test"
+
+environments:
+  stage:
+    vars:
+      ENVIRONMENT: "stage"
+
+    secrets:
+      ANOTHER_SECRET: "secret/test2"
+
+    dcs:
+      ndc_one:
+        vars:
+          DC: "one"
+        secret:
+          YET_ANOTHER_SECRET: "secret/test3"
+      ndc_two:
+        vars:
+          DC: "two"
+        secret:
+          YET_ANOTHER_SECRET: "secret/test4"
