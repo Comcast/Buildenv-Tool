@@ -1,4 +1,4 @@
-module github.comcast.com/SED/buildenv
+module github.com/Comcast/Buildenv-Tool
 
 go 1.13
 
