@@ -1,4 +1,4 @@
-VERSION := $(shell cat version.txt)
+VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
 PROJECT_NAME := buildenv
 
 .phony: all build-deps build clean

@@ -1,0 +1,34 @@
+name: Build and Release
+on: release
+jobs:
+  publish:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Get dependencies
+      run: make build-deps
+    - name: Build
+      run: make build
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: buildenv-*
+        tag: ${{ github.ref }}
+        overwrite: true
+        file_glob: true
+
+
+    - name: Upload to buildenv-darwin
+      uses: JasonEtco/upload-to-release@master
+      with:
+        args: buildenv-darwin_386-${{ GITHUB_REF }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
