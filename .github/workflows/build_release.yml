@@ -24,11 +24,3 @@ jobs:
         tag: ${{ github.ref }}
         overwrite: true
         file_glob: true
-
-
-    - name: Upload to buildenv-darwin
-      uses: JasonEtco/upload-to-release@master
-      with:
-        args: buildenv-darwin_386-${{ GITHUB_REF }}.tar.gz
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
