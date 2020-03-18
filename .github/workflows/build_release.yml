@@ -1,7 +1,7 @@
 name: Build and Release
 on: release
 jobs:
-  build:
+  publish:
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -16,6 +16,16 @@ jobs:
       run: make build-deps
     - name: Build
       run: make build
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: buildenv-*
+        tag: ${{ github.ref }}
+        overwrite: true
+        file_glob: true
+
+
     - name: Upload to buildenv-darwin
       uses: JasonEtco/upload-to-release@master
       with:
