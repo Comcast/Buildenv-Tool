@@ -4,13 +4,12 @@ on:
     branches:
       - master
 jobs:
-  Tag:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Bump version and push tag
-      uses: anothrNick/github-tag-action@1.17.2
+      uses: wiktorj/github-tag-action@2.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DEFAULT_BUMP: minor
