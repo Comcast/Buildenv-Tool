@@ -14,11 +14,13 @@ jobs:
       uses: actions/checkout@v2
     - name: Get dependencies
       shell: bash
-      run:
+      run: |
+        pwd
         make build-deps
     - name: Build
       shell: bash
       run: |
+        pwd
         echo $PATH
         echo $GOPATH
         make build
