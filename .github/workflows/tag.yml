@@ -14,7 +14,7 @@ jobs:
       uses: anothrNick/github-tag-action@1.17.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DEFAULT_BUMP: minor
+        DEFAULT_BUMP: patch
     - name: Create Release
       id: create_release
       uses: actions/create-release@latest
