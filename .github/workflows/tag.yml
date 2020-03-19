@@ -1,4 +1,4 @@
-name: Bump version
+name: Tag Version
 on:
   push:
     branches:
@@ -14,9 +14,3 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DEFAULT_BUMP: minor
-    - name: Run latest-tag
-      uses: EndBug/latest-tag@latest
-      with:
-        description: GitHub Actions Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
