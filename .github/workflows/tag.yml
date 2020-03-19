@@ -21,8 +21,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.tage_release.outputs.tag }}
-        release_name: Release ${{ steps.tage_release.outputs.tag }}
+        tag_name: ${{ steps.tag_release.outputs.tag }}
+        release_name: Release ${{ steps.tag_release.outputs.tag }}
         body: GitHub Actions Release
         draft: false
         prerelease: false
