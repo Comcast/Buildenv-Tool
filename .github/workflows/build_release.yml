@@ -12,17 +12,10 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Get dependencies
+    - name: Deps & Build
       shell: bash
       run: |
-        pwd
         make build-deps
-    - name: Build
-      shell: bash
-      run: |
-        pwd
-        echo $PATH
-        echo $GOPATH
         make build
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v1-release
