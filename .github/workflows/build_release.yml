@@ -15,6 +15,8 @@ jobs:
     - name: Deps & Build
       shell: bash
       run: |
+        which go
+        ls /opt/hostedtoolcache/go/1.14.0/x64
         make build-deps
         make build
     - name: Upload binaries to release
