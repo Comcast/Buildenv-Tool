@@ -10,7 +10,19 @@ jobs:
     - uses: actions/checkout@v2
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Bump version and push tag
+      id: tag_release
       uses: anothrNick/github-tag-action@1.17.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DEFAULT_BUMP: minor
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tage_release.outputs.tag }}
+        release_name: Release ${{ steps.tage_release.outputs.tag }}
+        body: GitHub Actions Release
+        draft: false
+        prerelease: false
