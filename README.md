@@ -9,7 +9,6 @@ Usage
 Given a `variables.yml` file like this:
 ```yaml
 ---
-  ---
   vars:
     GLOBAL: "global"
 
