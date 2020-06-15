@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"syscall"
+
+	"golang.org/x/sys/unix"
+
 	"io/ioutil"
 	"path/filepath"
 
@@ -66,6 +70,13 @@ func GetVaultSecret(path string) (*vaultapi.Secret, error) {
 
 func main() {
 	app := cli.NewApp()
+
+	// Attempt to lock memory to prevent writing to swap
+	err := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	var env string
 	var dc string
