@@ -3,15 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-
 	"syscall"
-
-	"golang.org/x/sys/unix"
 
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/urfave/cli"
+	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v2"
 
 	vaultapi "github.com/hashicorp/vault/api"
@@ -71,16 +69,10 @@ func GetVaultSecret(path string) (*vaultapi.Secret, error) {
 func main() {
 	app := cli.NewApp()
 
-	// Attempt to lock memory to prevent writing to swap
-	err := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	var env string
 	var dc string
 	var varsFile string
+	var mlockBool = false
 
 	type EnvVars map[string]string
 
@@ -129,12 +121,28 @@ func main() {
 			EnvVar:      "VARIABLES_FILE",
 			Destination: &varsFile,
 		},
+		cli.BoolFlag{
+			Name:        "mlock_enabled, m",
+			Usage:       "Will attempt system mlock if set (prevent write to swap)",
+			Required:    false,
+			Destination: &mlockBool,
+		},
 	}
 
 	app.Version = version
 	app.Name = "buildenv"
 	app.Usage = "Get the Build Environment from a settings yaml file."
+
 	app.Action = func(c *cli.Context) error {
+
+		if c.Bool("mlock_enabled") {
+			fmt.Printf("mlock bool is: %t \n", mlockBool)
+			err := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
+			if err != nil {
+				fmt.Printf("mlock err: %s\n", err)
+			}
+		}
+
 		if env == "" {
 			return cli.NewExitError("environment is required", EnvErrorCode)
 		}
