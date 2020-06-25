@@ -59,13 +59,18 @@ export DC="one"
 
 *A Note About Vault:* If you have `secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.)
 
+Running on Linux or in Docker container
+----------
+
+It is recommended to use the flag `-m` when running on a Linux or Docker container with swap enabled.  This will attempt to lock memory and prevent it from being written to swap space.  If running on a docker container it may be necessary to add `--cap-add=IPC_LOCK` to allow this. More info can be found at https://hub.docker.com/_/vault under Memory Locking and 'setcap'.
+
 Developing
 ----------
 
 To test with vault, run:
 
 ```bash
-docker-compose up vault -d
+docker-compose up -d vault
 export VAULT_ADDR="http://localhost:8200"
 export VAULT_TOKEN="test"
 vault write secret/test "value=It Works"
