@@ -137,9 +137,9 @@ func main() {
 
 		if c.Bool("mlock_enabled") {
 			fmt.Printf("mlock bool is: %t \n", mlockBool)
-			err := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
-			if err != nil {
-				fmt.Printf("mlock err: %s\n", err)
+			mlockError := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
+			if mlockError != nil {
+				return cli.NewExitError(fmt.Sprintf("mlock error: %s", mlockError), 1)
 			}
 		}
 
