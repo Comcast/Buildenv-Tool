@@ -62,7 +62,7 @@ export DC="one"
 Running on Linux or in Docker container
 ----------
 
-It is recommended to use the flag `-m` when running on a Linux or Docker container with swap enabled.  This will attempt to lock memory and prevent it from being written to swap space.  If running on a docker container it may be necessary to add `--cap-add=IPC_LOCK` to allow this. More info can be found at https://hub.docker.com/_/vault under Memory Locking and 'setcap'.
+It is recommended to use the flag `-m` when running on linux or docker container with swap enabled.  This will attempt to lock memory and prevent secrets from being written to swap space.  If running on a docker container it may be necessary to add `--cap-add=IPC_LOCK` to the `docker run` command or in the `docker-compose` file to allow this. More info can be found at https://hub.docker.com/_/vault under Memory Locking and 'setcap'.
 
 Developing
 ----------
