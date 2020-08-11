@@ -70,7 +70,7 @@ Developing
 To test with vault, run:
 
 ```bash
-docker-compose up -d vault
+docker-compose up vault -d
 export VAULT_ADDR="http://localhost:8200"
 export VAULT_TOKEN="test"
 vault write secret/test "value=It Works"
