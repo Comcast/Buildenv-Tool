@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"syscall"
 
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/urfave/cli"
-	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v2"
 
 	vaultapi "github.com/hashicorp/vault/api"
@@ -135,13 +133,7 @@ func main() {
 
 	app.Action = func(c *cli.Context) error {
 
-		if c.Bool("mlock_enabled") {
-			fmt.Printf("mlock bool is: %t \n", mlockBool)
-			mlockError := unix.Mlockall(syscall.MCL_CURRENT | syscall.MCL_FUTURE)
-			if mlockError != nil {
-				return cli.NewExitError(fmt.Sprintf("mlock error: %s", mlockError), 1)
-			}
-		}
+		enableMlock(mlockBool)
 
 		if env == "" {
 			return cli.NewExitError("environment is required", EnvErrorCode)
