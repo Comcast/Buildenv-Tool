@@ -70,6 +70,7 @@ func main() {
 	var env string
 	var dc string
 	var varsFile string
+	var mlockBool = false
 
 	type EnvVars map[string]string
 
@@ -118,12 +119,22 @@ func main() {
 			EnvVar:      "VARIABLES_FILE",
 			Destination: &varsFile,
 		},
+		cli.BoolFlag{
+			Name:        "mlock_enabled, m",
+			Usage:       "Will attempt system mlock if set (prevent write to swap)",
+			Required:    false,
+			Destination: &mlockBool,
+		},
 	}
 
 	app.Version = version
 	app.Name = "buildenv"
 	app.Usage = "Get the Build Environment from a settings yaml file."
+
 	app.Action = func(c *cli.Context) error {
+
+		enableMlock(mlockBool)
+
 		if env == "" {
 			return cli.NewExitError("environment is required", EnvErrorCode)
 		}
