@@ -17,10 +17,10 @@ environments:
       ndc_one:
         vars:
           DC: "one"
-        secret:
+        secrets:
           YET_ANOTHER_SECRET: "secret/test3"
       ndc_two:
         vars:
           DC: "two"
-        secret:
+        secrets:
           YET_ANOTHER_SECRET: "secret/test4"
