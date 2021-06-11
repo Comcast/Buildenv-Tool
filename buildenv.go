@@ -229,6 +229,16 @@ func main() {
 			}
 		}
 
+		fmt.Println("# KV Secrets:")
+		for k, path := range config.Environments[env].KVsecrets {
+			secret, err := GetVaultSecret(path.Path)
+			if err == nil {
+				fmt.Printf("export %s=%q # %s\n", k, secret.Data[path.Key], path.Path)
+			} else {
+				return cli.NewExitError(err.Error(), VaultErrorCode)
+			}
+		}
+
 		// Print the DC Specific Vars
 		if legacy {
 			if dc != "" {

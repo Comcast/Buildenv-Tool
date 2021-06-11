@@ -6,12 +6,12 @@ secrets:
   SECRET_TEST: "secret/test"
 
 kvsecrets:
-  CRAZY_KEY_SECRET1:
+  ODD_KEY_SECRET1:
     path: "secret/testKeyPath1"
     key: "key1"
-  CRAZY_KEY_SECRET2:
-    path: "secret/testKeyPath2"
-    key: "key2"
+  ODD_KEY_SECRET3:
+    path: "secret/testKeyPath3"
+    key: "key3"
 
 environments:
   stage:
@@ -22,12 +22,12 @@ environments:
       ANOTHER_SECRET: "secret/test2"
 
     kvsecrets:
-      CRAZY_KEY_SECRET3:
-        path: "secret/testKeyPath3"
-        key: "key3"
-      CRAZY_KEY_SECRET4:
-        path: "secret/testKeyPath4"
-        key: "key4"
+      ODD_KEY_SECRET5:
+        path: "secret/testKeyPath5"
+        key: "key5"
+      ODD_KEY_SECRET7:
+        path: "secret/testKeyPath7"
+        key: "key7"
 
     dcs:
       ndc_one:

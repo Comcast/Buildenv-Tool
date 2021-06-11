@@ -75,8 +75,10 @@ export VAULT_ADDR="http://localhost:8200"
 export VAULT_TOKEN="test"
 vault write secret/test "value=It Works"
 vault write secret/test2 "value=It Still Works"
-vault write secret/testKeyPath1 "key1=Crazy Key Value1 Working"
-vault write secret/testKeyPath3 "key3=Crazy Key Value3 Working"
+vault write secret/testKeyPath1 "key1=Odd Key Value1 Works"
+vault write secret/testKeyPath3 "key3=Odd Key Value3 Works"
+vault write secret/testKeyPath5 "key5=Odd Key Value5 Still Works"
+vault write secret/testKeyPath7 "key7=Odd Key Value7 Still Works"
 buildenv -e stage
 docker-compose down
 ```
