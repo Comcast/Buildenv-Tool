@@ -76,6 +76,13 @@ func main() {
 
 	type Secrets map[string]string
 
+	// type KVsecret struct {
+	// 	Path string
+	// 	Key string
+	// }
+
+	// type KVsecrets []KVsecret
+
 	type ConfigV1 struct {
 		Vars         EnvVars
 		Secrets      Secrets
@@ -87,14 +94,26 @@ func main() {
 	}
 
 	type Config struct {
-		Vars         EnvVars
-		Secrets      Secrets
+		Vars      EnvVars
+		Secrets   Secrets
+		KVsecrets map[string]struct {
+			Path string
+			Key  string
+		}
 		Environments map[string]struct {
-			Vars    EnvVars
-			Secrets Secrets
-			Dcs     map[string]struct {
-				Vars    EnvVars
-				Secrets Secrets
+			Vars      EnvVars
+			Secrets   Secrets
+			KVsecrets map[string]struct {
+				Path string
+				Key  string
+			}
+			Dcs map[string]struct {
+				Vars      EnvVars
+				Secrets   Secrets
+				KVsecrets map[string]struct {
+					Path string
+					Key  string
+				}
 			}
 		}
 	}
@@ -179,6 +198,16 @@ func main() {
 			secret, err := GetVaultSecret(path)
 			if err == nil {
 				fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+			} else {
+				return cli.NewExitError(err.Error(), VaultErrorCode)
+			}
+		}
+
+		fmt.Println("# KV Secrets:")
+		for k, path := range config.KVsecrets {
+			secret, err := GetVaultSecret(path.Path)
+			if err == nil {
+				fmt.Printf("export %s=%q # %s\n", k, secret.Data[path.Key], path.Path)
 			} else {
 				return cli.NewExitError(err.Error(), VaultErrorCode)
 			}
