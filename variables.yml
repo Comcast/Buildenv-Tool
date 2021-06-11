@@ -35,8 +35,22 @@ environments:
           DC: "one"
         secrets:
           YET_ANOTHER_SECRET: "secret/test3"
+        kvsecrets:
+          ODD_KEY_SECRET9:
+            path: "secret/testKeyPath9"
+            key: "key9"
+          ODD_KEY_SECRET11:
+            path: "secret/testKeyPath11"
+            key: "key11"
       ndc_two:
         vars:
           DC: "two"
         secrets:
           YET_ANOTHER_SECRET: "secret/test4"
+        kvsecrets:
+          ODD_KEY_SECRET13:
+            path: "secret/testKeyPath13"
+            key: "key13"
+          ODD_KEY_SECRET15:
+            path: "secret/testKeyPath15"
+            key: "key15"

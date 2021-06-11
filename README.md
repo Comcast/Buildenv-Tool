@@ -29,6 +29,10 @@ Given a `variables.yml` file like this:
             YET_ANOTHER_SECRET: "secret/test3"
           vars:
             DC: "one"
+          kvsecrets:
+            ODD_KEY_SECRET:
+              path: "secret/test4"
+              key: "stage"
 
         ndc_two:
           secrets:
@@ -47,17 +51,21 @@ Output would look like this:
 # Global Vars:
 export GLOBAL="global"
 # Global Secrets:
-export SECRET_TEST="It Works" # secret/test
+export SECRET_TEST="It Works" # secret/test1
 # Environment (stage) Vars:
 export ENVIRONMENT="stage"
 # Environment (stage) Secrets:
-export ANOTHER_SECRET="It Still Works" # secret/test
+export ANOTHER_SECRET="It Still Works" # secret/test2
 # Datacenter (ndc_one) Specific Vars:
 YET_ANOTHER_SECRET: "secretpassword"
 export DC="one"
+# KV Secrets:
+export ODD_KEY_SECRET="It Still Works" # secret/test3
 ```
 
 *A Note About Vault:* If you have `secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.)
+
+*A Note About Keys:* Vault secrets defined under `secrets:` must have the key `value`.  Vault secrets defined under `kvsecrets:` can have any key as long as it's defined under the corresponding `key:`.
 
 Running on Linux or in Docker container
 ----------
