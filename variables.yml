@@ -3,24 +3,52 @@ vars:
   GLOBAL: "global"
 
 secrets:
-  SECRET_TEST: "secret/test"
+  #SECRET_TEST: "secret/test"
+
+engines:
+  - path: "aws/sts/backup"
+    # method: "WRITE"
+    args:
+      ttl: "30m"
+    vars:
+      AWS_ACCESS_KEY_ID: "access_key"
+      SECRET_ACCESS_KEY: "secret_key"
+      AWS_SESSION_TOKEN: "security_token"
 
 environments:
-  stage:
+  prod:
     vars:
       ENVIRONMENT: "stage"
 
     secrets:
-      ANOTHER_SECRET: "secret/test2"
+      #ANOTHER_SECRET: "secret/test2"
 
     dcs:
-      ndc_one:
+      aws:
+        engines:
+        - path: "aws/sts/backup"
+          # method: "WRITE"
+          args:
+            ttl: "30m"
+          vars:
+            AWS_ACCESS_KEY_ID_STAGE: "access_key"
+            SECRET_ACCESS_KEY_STAGE: "secret_key"
+            AWS_SESSION_TOKEN_STAGE: "security_token"
+        # - path: "database/postgres"
+        #   vars:
+        #     PG_USER: "username"
+        #     PG_PASSWORD: "password"
+        secrets:
         vars:
+          BE_CLOUD: "aws"
+          BE_DC: "one"
+          BE_AWS_REGION: "eu-west-1"
+          BE_AWS_ACCESS_KEY_ID: "secret/test3"
+          BE_AWS_SECRET_ACCESS_KEY: ""
+
+      hetzner:
+        secrets:
+        vars:
+          CLOUD: "hetzner"
           DC: "one"
-        secrets:
-          YET_ANOTHER_SECRET: "secret/test3"
-      ndc_two:
-        vars:
-          DC: "two"
-        secrets:
-          YET_ANOTHER_SECRET: "secret/test4"
+          HCLOUD_TOKEN: "secret/test3"
