@@ -3,6 +3,7 @@ package main
 import (
     "fmt"
     "os"
+    "strings"
 
     "io/ioutil"
     "path/filepath"
@@ -16,6 +17,11 @@ import (
 type Engine struct {
     Path string
     Args map[string]string
+    Vars map[string]string
+}
+
+type Secret struct {
+    Path string
     Vars map[string]string
 }
 
@@ -58,7 +64,7 @@ func GetVaultSecret(path string) (*vaultapi.Secret, error) {
     if err != nil {
         return nil, fmt.Errorf("Vault - Client Error: %s", err)
     }
-
+    path, _ = lastPart(path)
     vaultSecret, err := vault.Logical().Read(path)
 
     if err != nil {
@@ -66,6 +72,33 @@ func GetVaultSecret(path string) (*vaultapi.Secret, error) {
     }
     if vaultSecret == nil {
         return nil, fmt.Errorf("Vault - No secret at path: %s", path)
+    }
+    return vaultSecret, nil
+}
+
+// GetVaultSecret - Pull a Secret version 2 From Vault given a path
+func GetVaultSecretV2(secret Secret) (*vaultapi.Secret, error) {
+    // Get Config Completely From Environment
+    var c *vaultapi.Config
+
+    vault, err := vaultapi.NewClient(c)
+
+    if err != nil {
+        return nil, fmt.Errorf("Vault - Client Error: %s", err)
+    }
+    var vaultSecret *vaultapi.Secret
+    if secret.Vars != nil {
+        vaultSecret, err = vault.Logical().Read(secret.Path)
+    } else {
+        path, _ := lastPart(secret.Path)
+        vaultSecret, err = vault.Logical().Read(path)
+    }
+
+    if err != nil {
+        return nil, fmt.Errorf("Vault - Read Error: %s", err)
+    }
+    if vaultSecret == nil {
+        return nil, fmt.Errorf("Vault - No secret at path: %s", secret.Path)
     }
     return vaultSecret, nil
 }
@@ -82,31 +115,35 @@ func GetEngineSecret(engine Engine) (*map[string]string, error) {
     }
 
     args := make(map[string]interface{}, len(engine.Args))
-	for k, v := range engine.Args {
-		args[k] = v
-	}
-	
+    for k, v := range engine.Args {
+        args[k] = v
+    }
 
     resp, err := vault.Logical().Write(engine.Path, args)
-	if err != nil {
-		return nil, fmt.Errorf("Vault - Read Error: %s", err)
-	}
+    if err != nil {
+        return nil, fmt.Errorf("Vault - Read Error: %s", err)
+    }
 
     if resp == nil {
         return nil, fmt.Errorf("Vault - No secret at path: %s", engine.Path)
     }
 
-    fmt.Printf("Vault - Reponse: %q\n", resp.Data)
+    // fmt.Printf("#Vault - Reponse: %q\n", resp.Data)
     result := make(map[string]string, len(engine.Vars))
 
     for k, v := range engine.Vars {
-        result[k] = resp.Data[v].(string)
+        result[k] = fmt.Sprintf("%v", resp.Data[v])
     }
 
     if err != nil {
         return nil, fmt.Errorf("Vault - Read Error: %s", err)
     }
     return &result, nil
+}
+
+func lastPart(str string) (string, string) {
+    slice := strings.Split(str, "/")
+    return strings.Join(slice[:len(slice)-1], "/"), slice[len(slice)-1]
 }
 
 func main() {
@@ -119,30 +156,37 @@ func main() {
 
     type EnvVars map[string]string
 
-    type Secrets map[string]string
+    type KV map[string]string
+
+    type Secrets map[string]Secret
 
     type ConfigV1 struct {
         Vars         EnvVars
-        Secrets      Secrets
+        Secrets      KV
+        Secrets_V2   Secrets
         Environments map[string]struct {
-            Vars    EnvVars
-            Secrets Secrets
-            Dcs     map[string]EnvVars
+            Vars       EnvVars
+            Secrets    KV
+            Secrets_V2 Secrets
+            Dcs        map[string]EnvVars
         }
     }
 
     type Config struct {
         Vars         EnvVars
-        Secrets      Secrets
+        Secrets      KV
+        Secrets_V2   Secrets
         Engines      []Engine
         Environments map[string]struct {
-            Vars    EnvVars
-            Secrets Secrets
-            Engines []Engine
-            Dcs     map[string]struct {
-                Vars    EnvVars
-                Secrets Secrets
-                Engines []Engine
+            Vars       EnvVars
+            Secrets    KV
+            Secrets_V2 Secrets
+            Engines    []Engine
+            Dcs        map[string]struct {
+                Vars       EnvVars
+                Secrets    KV
+                Secrets_V2 Secrets
+                Engines    []Engine
             }
         }
     }
@@ -226,7 +270,28 @@ func main() {
         for k, path := range config.Secrets {
             secret, err := GetVaultSecret(path)
             if err == nil {
-                fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+                _, key := lastPart(path)
+                fmt.Printf("export %s=%q # %s\n", k, secret.Data[key], path)
+            } else {
+                return cli.NewExitError(err.Error(), VaultErrorCode)
+            }
+        }
+
+        fmt.Println("# Global Secrets V2:")
+        for k, secret := range config.Secrets_V2 {
+            // fmt.Printf("# secret yaml =%s\n", secret)
+            vaultSecret, err := GetVaultSecretV2(secret)
+            // fmt.Printf("# vault secret =%s\n", vaultSecret.Data)
+            if err == nil {
+                secretData := vaultSecret.Data["data"].(map[string]interface{})
+                if secret.Vars == nil {
+                    path, key := lastPart(secret.Path)
+                    fmt.Printf("export %s=%s # %s %s\n", k, secretData[key], path, key)
+                } else {
+                    for vk, vv := range secret.Vars {
+                        fmt.Printf("export %s=%s # %s %s\n", vk, secretData[vv], secret.Path, vv)
+                    }
+                }
             } else {
                 return cli.NewExitError(err.Error(), VaultErrorCode)
             }
@@ -254,7 +319,26 @@ func main() {
         for k, path := range config.Environments[env].Secrets {
             secret, err := GetVaultSecret(path)
             if err == nil {
-                fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+                _, key := lastPart(path)
+                fmt.Printf("export %s=%q # %s\n", k, secret.Data[key], path)
+            } else {
+                return cli.NewExitError(err.Error(), VaultErrorCode)
+            }
+        }
+
+        fmt.Printf("# Environment (%s) Secrets V2:\n", env)
+        for k, secret := range config.Environments[env].Secrets_V2 {
+            vaultSecret, err := GetVaultSecretV2(secret)
+            if err == nil {
+                secretData := vaultSecret.Data["data"].(map[string]interface{})
+                if secret.Vars == nil {
+                    path, key := lastPart(secret.Path)
+                    fmt.Printf("export %s=%s # %s %s\n", k, secretData[key], path, key)
+                } else {
+                    for vk, vv := range secret.Vars {
+                        fmt.Printf("export %s=%s # %s %s\n", vk, secretData[vv], secret.Path, vv)
+                    }
+                }
             } else {
                 return cli.NewExitError(err.Error(), VaultErrorCode)
             }
@@ -290,7 +374,26 @@ func main() {
             for k, path := range config.Environments[env].Dcs[dc].Secrets {
                 secret, err := GetVaultSecret(path)
                 if err == nil {
-                    fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+                    _, key := lastPart(path)
+                    fmt.Printf("export %s=%q # %s\n", k, secret.Data[key], path)
+                } else {
+                    return cli.NewExitError(err.Error(), VaultErrorCode)
+                }
+            }
+
+            fmt.Printf("# Datacenter (%s) Specific Secrets V2:\n", env)
+            for k, secret := range config.Environments[env].Dcs[dc].Secrets_V2 {
+                vaultSecret, err := GetVaultSecretV2(secret)
+                if err == nil {
+                    secretData := vaultSecret.Data["data"].(map[string]interface{})
+                    if secret.Vars == nil {
+                        path, key := lastPart(secret.Path)
+                        fmt.Printf("export %s=%s # %s %s\n", k, secretData[key], path, key)
+                    } else {
+                        for vk, vv := range secret.Vars {
+                            fmt.Printf("export %s=%s # %s %s\n", vk, secretData[vv], secret.Path, vv)
+                        }
+                    }
                 } else {
                     return cli.NewExitError(err.Error(), VaultErrorCode)
                 }

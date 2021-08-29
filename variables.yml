@@ -1,19 +1,31 @@
 ---
 vars:
   GLOBAL: "global"
-
-secrets:
-  #SECRET_TEST: "secret/test"
-
-engines:
-  - path: "aws/sts/backup"
-    # method: "WRITE"
-    args:
-      ttl: "30m"
+# vault kv value stores version 2
+secrets_v2:
+# multiple values for one key
+  KV_V2_TEST:
+    path: "kv/data/test/"
     vars:
-      AWS_ACCESS_KEY_ID: "access_key"
-      SECRET_ACCESS_KEY: "secret_key"
-      AWS_SESSION_TOKEN: "security_token"
+      KV_TEST_VALUE_1: "value1"
+      KV_TEST_VALUE_2: "value2"
+      KV_TEST_VALUE_3: "value3"
+# single value for one key
+  KV_V2_TEST_SIMPLE:
+    path: "kv/data/test/value1"
+# vault kv store version 1
+secrets:
+  SECRET_TEST_1: "secret/test/value"
+  SECRET_TEST_2: "secret/test2/value"
+# vault secret engines
+engines:
+  - path: "totp/keys/user_test"
+    args:
+      generate: "true"
+      issuer: "Vault"
+      account_name: "user@test.com"
+    vars:
+      BARCODE: "barcode"
 
 environments:
   prod:
@@ -21,34 +33,31 @@ environments:
       ENVIRONMENT: "stage"
 
     secrets:
-      #ANOTHER_SECRET: "secret/test2"
+      ANOTHER_SECRET: "secret/test2/value"
 
     dcs:
       aws:
         engines:
-        - path: "aws/sts/backup"
-          # method: "WRITE"
-          args:
-            ttl: "30m"
-          vars:
-            AWS_ACCESS_KEY_ID_STAGE: "access_key"
-            SECRET_ACCESS_KEY_STAGE: "secret_key"
-            AWS_SESSION_TOKEN_STAGE: "security_token"
-        # - path: "database/postgres"
-        #   vars:
-        #     PG_USER: "username"
-        #     PG_PASSWORD: "password"
+          - path: "totp/keys/user_aws_test"
+            args:
+              generate: "true"
+              issuer: "Vault"
+              account_name: "user_aws@test.com"
+            vars:
+              AWS_BARCODE: "barcode"
         secrets:
+          AWS_SECRET_TEST_1: "secret/test/value"
+          AWS_SECRET_TEST_2: "secret/test2/value"
+        secrets_v2:
+          AWS_KV_TEST:
+            path: "kv/data/test/"
+            vars:
+              AWS_KV_TEST_VALUE_1: "value1"
+              AWS_KV_TEST_VALUE_2: "value2"
+              AWS_KV_TEST_VALUE_3: "value3"
         vars:
-          BE_CLOUD: "aws"
-          BE_DC: "one"
-          BE_AWS_REGION: "eu-west-1"
-          BE_AWS_ACCESS_KEY_ID: "secret/test3"
-          BE_AWS_SECRET_ACCESS_KEY: ""
+          CLOUD: "aws"
 
       hetzner:
-        secrets:
         vars:
           CLOUD: "hetzner"
-          DC: "one"
-          HCLOUD_TOKEN: "secret/test3"
