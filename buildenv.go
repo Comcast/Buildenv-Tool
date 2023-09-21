@@ -15,6 +15,7 @@ import (
 
 var (
 	version = "Development"
+	vault   *vaultapi.Client
 )
 
 // EnvErrorCode Exit Code for Missing Environment
@@ -47,10 +48,12 @@ func GetVaultSecret(path string) (*vaultapi.Secret, error) {
 	// Get Config Completely From Environment
 	var c *vaultapi.Config
 
-	vault, err := vaultapi.NewClient(c)
-
-	if err != nil {
-		return nil, fmt.Errorf("Vault - Client Error: %s", err)
+	if vault == nil {
+		var err error
+		vault, err = vaultapi.NewClient(c)
+		if err != nil {
+			return nil, fmt.Errorf("Vault - Client Error: %s", err)
+		}
 	}
 
 	vaultSecret, err := vault.Logical().Read(path)
@@ -71,6 +74,7 @@ func main() {
 	var dc string
 	var varsFile string
 	var mlockBool = false
+	var skipComments = false
 
 	type EnvVars map[string]string
 
@@ -125,6 +129,12 @@ func main() {
 			Required:    false,
 			Destination: &mlockBool,
 		},
+		cli.BoolFlag{
+			Name:        "no_comments, c",
+			Usage:       "Supress all comments in the output",
+			Required:    false,
+			Destination: &skipComments,
+		},
 	}
 
 	app.Version = version
@@ -162,39 +172,59 @@ func main() {
 			}
 		}
 
-		fmt.Println("# Setting Variables for:")
-		fmt.Printf("# Environment: %s\n", env)
+		if !skipComments {
+			fmt.Println("# Setting Variables for:")
+			fmt.Printf("# Environment: %s\n", env)
+		}
 		if dc != "" {
-			fmt.Printf("# Datacenter: %s\n", dc)
+			if !skipComments {
+				fmt.Printf("# Datacenter: %s\n", dc)
+			}
 		}
 
 		// Print The Globals
-		fmt.Println("# Global Vars:")
+		if !skipComments {
+			fmt.Println("# Global Vars:")
+		}
 		for k, v := range config.Vars {
 			fmt.Printf("export %s=%q\n", k, v)
 		}
 
-		fmt.Println("# Global Secrets:")
+		if !skipComments {
+			fmt.Println("# Global Secrets:")
+		}
 		for k, path := range config.Secrets {
 			secret, err := GetVaultSecret(path)
 			if err == nil {
-				fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+				fmt.Printf("export %s=%q", k, secret.Data["value"])
+				if !skipComments {
+					fmt.Printf(" # %s", path)
+				}
+				fmt.Println()
 			} else {
 				return cli.NewExitError(err.Error(), VaultErrorCode)
 			}
 		}
 
 		// Print The Environment Specific Vars
-		fmt.Printf("# Environment (%s) Vars:\n", env)
+		if !skipComments {
+			fmt.Printf("# Environment (%s) Vars:\n", env)
+		}
 		for k, v := range config.Environments[env].Vars {
 			fmt.Printf("export %s=%q\n", k, v)
 		}
 
-		fmt.Printf("# Environment (%s) Secrets:\n", env)
+		if !skipComments {
+			fmt.Printf("# Environment (%s) Secrets:\n", env)
+		}
 		for k, path := range config.Environments[env].Secrets {
 			secret, err := GetVaultSecret(path)
 			if err == nil {
-				fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+				fmt.Printf("export %s=%q", k, secret.Data["value"])
+				if !skipComments {
+					fmt.Printf(" # %s", path)
+				}
+				fmt.Println()
 			} else {
 				return cli.NewExitError(err.Error(), VaultErrorCode)
 			}
@@ -203,22 +233,33 @@ func main() {
 		// Print the DC Specific Vars
 		if legacy {
 			if dc != "" {
-				fmt.Printf("# Datacenter (%s) Specific Vars:\n", dc)
+				if !skipComments {
+					fmt.Printf("# Datacenter (%s) Specific Vars:\n", dc)
+				}
 				for k, v := range config.Environments[env].Dcs[dc].Vars {
 					fmt.Printf("export %s=%q\n", k, v)
 				}
 			}
 		} else {
-			fmt.Printf("# Datacenter (%s) Specific Vars:\n", env)
+			if !skipComments {
+				fmt.Printf("# Datacenter (%s) Specific Vars:\n", env)
+			}
 			for k, v := range config.Environments[env].Dcs[dc].Vars {
 				fmt.Printf("export %s=%q\n", k, v)
 			}
 
-			fmt.Printf("# Datacenter (%s) Specific Secrets:\n", env)
+			if !skipComments {
+				fmt.Printf("# Datacenter (%s) Specific Secrets:\n", env)
+			}
+
 			for k, path := range config.Environments[env].Dcs[dc].Secrets {
 				secret, err := GetVaultSecret(path)
 				if err == nil {
-					fmt.Printf("export %s=%q # %s\n", k, secret.Data["value"], path)
+					fmt.Printf("export %s=%q", k, secret.Data["value"])
+					if !skipComments {
+						fmt.Printf(" # %s", path)
+					}
+					fmt.Println()
 				} else {
 					return cli.NewExitError(err.Error(), VaultErrorCode)
 				}
