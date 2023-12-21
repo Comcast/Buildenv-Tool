@@ -1,11 +1,11 @@
 version: "3"
 services:
   build:
-    image: golang:1.16-alpine
+    image: golang:1.21-alpine
     volumes:
       - ./:/go/src/buildenv
   vault:
-    image: vault:0.9.0
+    image: hashicorp/vault
     cap_add:
       - IPC_LOCK
     environment:

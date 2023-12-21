@@ -6,8 +6,7 @@ PROJECT_NAME := buildenv
 all: clean build-deps build
 
 build-deps:
-	go get github.com/mitchellh/gox
-	go get github.com/aktau/github-release
+	go install github.com/mitchellh/gox@latest
 
 build:
 	CGO_ENABLED=0 gox -ldflags "-X main.version=$(VERSION)" -osarch="darwin/amd64 darwin/arm64 linux/386 linux/amd64 linux/arm linux/arm64 windows/386 windows/amd64" -output "pkg/{{.OS}}_{{.Arch}}/$(PROJECT_NAME)"

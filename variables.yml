@@ -3,7 +3,21 @@ vars:
   GLOBAL: "global"
 
 secrets:
-  SECRET_TEST: "secret/test"
+  GENERIC_SECRET: "gen/test"
+  KV_SECRET: "old/test"
+  KV2_SECRET: "secret/oldstyle"
+
+kv_secrets:
+  - path: "secret/test"
+    vars:
+      KV2_ONE: "one"
+      KV2_TWO: "two"
+  - path: "old/test"
+    vars:
+      KV1: "value"
+  - path: "gen/test"
+    vars:
+      KV_GENERIC: "value"
 
 environments:
   stage:
@@ -11,16 +25,15 @@ environments:
       ENVIRONMENT: "stage"
 
     secrets:
-      ANOTHER_SECRET: "secret/test2"
+      ANOTHER_SECRET: "secret/oldstyle"
 
     dcs:
       ndc_one:
         vars:
           DC: "one"
-        secrets:
-          YET_ANOTHER_SECRET: "secret/test3"
-      ndc_two:
-        vars:
-          DC: "two"
-        secrets:
-          YET_ANOTHER_SECRET: "secret/test4"
+        kv_secrets:
+          - path: "old/test"
+            vars:
+              KV2_THREE: "three"
+          
+

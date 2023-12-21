@@ -26,10 +26,10 @@ jobs:
           body: GitHub Actions Release
           draft: false
           prerelease: false
-      - name: Set up Go 1.16
+      - name: Set up Go 1.21
         uses: actions/setup-go@v1
         with:
-          go-version: 1.16
+          go-version: 1.21
         id: go
       - name: Check out new tag into the Go module directory
         uses: actions/checkout@v2
