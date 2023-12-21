@@ -1,7 +1,7 @@
 buildenv
 ========
 
-A tool for generating environment exports from a YAML file. _Now with vault integration!_
+A tool for generating environment exports from a YAML file. Variables can be set in plain test, or by specifying vault key-value (version 2) paths and keys (`kv_secrets`) or the older generic / kv paths (`secrets`) where the key name "value" is assumed.
 
 Usage
 -----
@@ -9,55 +9,66 @@ Usage
 Given a `variables.yml` file like this:
 ```yaml
 ---
-  vars:
-    GLOBAL: "global"
+vars:
+  GLOBAL: "global"
 
-  secrets:
-    SECRET_TEST: "secret/test"
+secrets:
+  GENERIC_SECRET: "gen/test"
+  KV_SECRET: "old/test"
+  KV2_SECRET: "secret/oldstyle"
 
-  environments:
-    stage:
-      vars:
-        ENVIRONMENT: "stage"
+kv_secrets:
+  - path: "secret/test"
+    vars:
+      KV2_ONE: "one"
+      KV2_TWO: "two"
+  - path: "old/test"
+    vars:
+      KV1: "value"
+  - path: "gen/test"
+    vars:
+      KV_GENERIC: "value"
 
-      secrets:
-        ANOTHER_SECRET: "secret/test2"
+environments:
+  stage:
+    vars:
+      ENVIRONMENT: "stage"
 
-      dcs:
-        ndc_one:
-          secrets:
-            YET_ANOTHER_SECRET: "secret/test3"
-          vars:
-            DC: "one"
+    secrets:
+      ANOTHER_SECRET: "secret/oldstyle"
 
-        ndc_two:
-          secrets:
-            YET_ANOTHER_SECRET: "secret/test3"
-          vars:
-            DC: "one"
+    dcs:
+      ndc_one:
+        vars:
+          DC: "one"
+        kv_secrets:
+          - path: "old/test"
+            vars:
+              KV2_THREE: "three"
 ```
 
 Output would look like this:
 
 ```
-% buildenv -e stage -d ndc_one
-# Setting Variables for:
-# Environment: stage
-# Datacenter: ndc_one
-# Global Vars:
+% buildenv -c -e stage -d ndc_one
+# Global Variables
 export GLOBAL="global"
-# Global Secrets:
-export SECRET_TEST="It Works" # secret/test
-# Environment (stage) Vars:
+export KV2_ONE="1" # Path: secret/test, Key: one
+export KV2_TWO="2" # Path: secret/test, Key: two
+export KV1="old" # Path: old/test, Key: value
+export KV_GENERIC="generic" # Path: gen/test, Key: value
+export GENERIC_SECRET="generic" # Path: gen/test, Key: value
+export KV_SECRET="old" # Path: old/test, Key: value
+export KV2_SECRET="default" # Path: secret/oldstyle, Key: value
+# Environment: stage
 export ENVIRONMENT="stage"
-# Environment (stage) Secrets:
-export ANOTHER_SECRET="It Still Works" # secret/test
-# Datacenter (ndc_one) Specific Vars:
-YET_ANOTHER_SECRET: "secretpassword"
+export ANOTHER_SECRET="default" # Path: secret/oldstyle, Key: value
+# Datacenter: ndc_one
 export DC="one"
+export KV2_THREE="3" # Path: old/test, Key: three
 ```
 
-*A Note About Vault:* If you have `secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.)
+*A Note About Vault:* If you have `secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
 
 Running on Linux or in Docker container
 ----------
@@ -73,8 +84,13 @@ To test with vault, run:
 docker-compose up vault -d
 export VAULT_ADDR="http://localhost:8200"
 export VAULT_TOKEN="test"
-vault write secret/test "value=It Works"
-vault write secret/test2 "value=It Still Works"
-buildenv -e stage
+vault secrets enable -path gen generic
+vault secrets enable -version=1 -path old kv
+vault kv put secret/test "one=1" "two=2"
+vault kv put secret/oldstyle "value=default"
+vault kv put old/test "value=old" "three=3"
+vault write gen/test "value=generic"
+
+buildenv -c -e stage -d ndc_one
 docker-compose down
 ```
