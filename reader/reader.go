@@ -56,6 +56,14 @@ type KVSecrets []KVSecretBlock
 func (s KVSecretBlock) GetOutput(ctx context.Context, r *Reader) (OutputList, error) {
 	output := OutputList{}
 
+	// Initialize the Vault Client if Necessary
+	if r.client == nil {
+		err := r.InitVault()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// The first thing we need to do is get the mount point for the KV engine
 	mountPoint, secretPath := r.MountAndPath(s.Path)
 	if mountPoint == "" {
@@ -170,16 +178,17 @@ type MountInfo struct {
 
 type Mounts map[string]MountInfo
 
-func NewReader() (*Reader, error) {
+func (r *Reader) InitVault() error {
 	vaultClient, err := vault.New(vault.WithEnvironment())
 	if err != nil {
-		return nil, err
+		return err
 	}
+	r.client = vaultClient
 
 	// Get mount info
 	resp, err := vaultClient.System.MountsListSecretsEngines(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("failure reading secret mounts: %w", err)
+		return fmt.Errorf("failure reading secret mounts: %w", err)
 	}
 
 	mounts := Mounts{}
@@ -197,10 +206,12 @@ func NewReader() (*Reader, error) {
 		mounts[mount] = thisMount
 	}
 
-	return &Reader{
-		client: vaultClient,
-		mounts: mounts,
-	}, nil
+	r.mounts = mounts
+	return nil
+}
+
+func NewReader() (*Reader, error) {
+	return &Reader{}, nil
 }
 
 func (r *Reader) MountAndPath(path string) (string, string) {
