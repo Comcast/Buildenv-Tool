@@ -28,6 +28,8 @@ const (
 
 var cfgFile string
 
+var Version string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "buildenv",
@@ -37,6 +39,11 @@ Values can be specified in plain text, or set from a vault server.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
+
+		version, _ := cmd.Flags().GetBool("version")
+		if version {
+			fmt.Printf("Version: %s\n", Version)
+		}
 
 		ctx := context.Background()
 		debug, _ := cmd.Flags().GetBool("debug")
@@ -98,7 +105,8 @@ Values can be specified in plain text, or set from a vault server.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(version string) {
+	Version = version
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -120,9 +128,11 @@ func init() {
 	rootCmd.Flags().StringP("datacenter", "d", "", "Datacenter (ndc_as_a, us-east-1 etc)")
 	rootCmd.Flags().StringP("variables_file", "f", "variables.yml", "Variables Source YAML file")
 
+	rootCmd.Flags().BoolP("skip-vault", "v", false, "Skip Vault and use only variables file")
 	rootCmd.Flags().BoolP("mlock", "m", false, "Will enable system mlock if set (prevent write to swap on linux)")
 	rootCmd.Flags().BoolP("comments", "c", false, "Comments will be included in output")
 	rootCmd.Flags().Bool("debug", false, "Turn on debugging output")
+	rootCmd.Flags().Bool("version", false, "Print the version number")
 
 }
 

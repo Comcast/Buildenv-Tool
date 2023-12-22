@@ -5,6 +5,8 @@ package main
 
 import "github.com/Comcast/Buildenv-Tool/cmd"
 
+var version string = "development"
+
 func main() {
-	cmd.Execute()
+	cmd.Execute(version)
 }
