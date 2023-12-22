@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/vault-client-go"
@@ -80,7 +81,14 @@ func (s KVSecretBlock) GetOutput(ctx context.Context, r *Reader) (OutputList, er
 			}
 			return nil, fmt.Errorf("error reading path '%s': %w", s.Path, err)
 		}
-		for varName, varKey := range s.Vars {
+		// For testing purposes, we want to order this
+		envVars := []string{}
+		for varName := range s.Vars {
+			envVars = append(envVars, varName)
+		}
+		slices.Sort(envVars)
+		for _, varName := range envVars {
+			varKey := s.Vars[varName]
 			if _, hasValue := resp.Data.Data[varKey]; !hasValue {
 				return nil, fmt.Errorf("key %s not found in path %s", varKey, s.Path)
 			}

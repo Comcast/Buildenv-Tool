@@ -145,7 +145,7 @@ func TestKVSecretBlock_GetOutput(t *testing.T) {
 		// KV Data
 		switch r.URL.Path {
 		case "/v1/kv2/data/test":
-			resp = []byte(`{"request_id":"bf3b02c0-096e-84d3-dad7-196aa9f112ed","lease_id":"","renewable":false,"lease_duration":0,"data":{"data":{"one":"1","two":"2"},"metadata":{"created_time":"2023-12-20T15:32:32.814115685Z","custom_metadata":null,"deletion_time":"","destroyed":false,"version":1}},"wrap_info":null,"warnings":null,"auth":null}`)
+			resp = []byte(`{"request_id":"bf3b02c0-096e-84d3-dad7-196aa9f112ed","lease_id":"","renewable":false,"lease_duration":0,"data":{"data":{"one":"1","two":"2","three":"3"},"metadata":{"created_time":"2023-12-20T15:32:32.814115685Z","custom_metadata":null,"deletion_time":"","destroyed":false,"version":1}},"wrap_info":null,"warnings":null,"auth":null}`)
 		case "/v1/kv/test":
 			resp = []byte(`{"request_id":"63c8c31b-f03f-81ac-cfaa-324239789c3f","lease_id":"","renewable":false,"lease_duration":2764800,"data":{"value":"old"},"wrap_info":null,"warnings":null,"auth":null}`)
 		default:
@@ -258,8 +258,9 @@ func TestKVSecretBlock_GetOutput(t *testing.T) {
 			fields: fields{
 				Path: "kv2/test",
 				Vars: KVSecret{
-					"ONE": "one",
-					"TWO": "two",
+					"ONE":   "one",
+					"TWO":   "two",
+					"THREE": "three",
 				},
 			},
 			want: OutputList{
@@ -267,6 +268,11 @@ func TestKVSecretBlock_GetOutput(t *testing.T) {
 					Key:     "ONE",
 					Value:   "1",
 					Comment: "Path: kv2/test, Key: one",
+				},
+				{
+					Key:     "THREE",
+					Value:   "3",
+					Comment: "Path: kv2/test, Key: three",
 				},
 				{
 					Key:     "TWO",
