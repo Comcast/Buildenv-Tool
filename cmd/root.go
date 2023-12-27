@@ -43,6 +43,7 @@ Values can be specified in plain text, or set from a vault server.`,
 		version, _ := cmd.Flags().GetBool("version")
 		if version {
 			fmt.Printf("buildenv version %s\n", Version)
+			os.Exit(0)
 		}
 
 		ctx := context.Background()
