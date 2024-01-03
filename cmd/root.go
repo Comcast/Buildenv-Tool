@@ -50,7 +50,7 @@ Values can be specified in plain text, or set from a vault server.`,
 		debug, _ := cmd.Flags().GetBool("debug")
 
 		enableMlock, _ := cmd.Flags().GetBool("mlock")
-		if !enableMlock {
+		if enableMlock {
 			err := EnableMlock()
 			if err != nil {
 				fmt.Printf("Failure locking memory: %v", err)

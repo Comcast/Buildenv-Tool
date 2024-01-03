@@ -68,7 +68,7 @@ export DC="one"
 export KV2_THREE="3" # Path: old/test, Key: three
 ```
 
-*A Note About Vault:* If you have `secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
+*A Note About Vault:* If you have `secrets` or `kv_secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path & key in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
 
 Running on Linux or in Docker container
 ----------
