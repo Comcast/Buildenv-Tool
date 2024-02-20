@@ -19,6 +19,11 @@ kv_secrets:
     vars:
       KV_GENERIC: "value"
 
+kv1_secrets:
+  - path: "old/test"
+    vars:
+      KV1SPECIFIC: "value"
+
 environments:
   stage:
     vars:

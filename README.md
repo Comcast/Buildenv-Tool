@@ -1,7 +1,7 @@
 buildenv
 ========
 
-A tool for generating environment exports from a YAML file. Variables can be set in plain test, or by specifying vault key-value (version 2) paths and keys (`kv_secrets`) or the older generic / kv paths (`secrets`) where the key name "value" is assumed.
+A tool for generating environment exports from a YAML file. Variables can be set in plain test, or by specifying vault key-value (version 2) paths and keys (`kv_secrets`) or the older generic / kv paths (`secrets`) where the key name "value" is assumed. Buildenv will autodetect between version 2 and version 1 `kv_secret` paths _unless it can't read the mount details_. For that case, `kv_secrets` will assume version 2, and `kv1_secrets` will use version 1.
 
 Usage
 -----
@@ -29,6 +29,11 @@ kv_secrets:
     vars:
       KV_GENERIC: "value"
 
+kv1_secrets:
+- path: "old/test"
+    vars:
+      KV1SPECIFIC: "value"
+
 environments:
   stage:
     vars:
@@ -49,7 +54,7 @@ environments:
 
 Output would look like this:
 
-```
+```bash
 % buildenv -c -e stage -d ndc_one
 # Global Variables
 export GLOBAL="global"
@@ -57,6 +62,7 @@ export KV2_ONE="1" # Path: secret/test, Key: one
 export KV2_TWO="2" # Path: secret/test, Key: two
 export KV1="old" # Path: old/test, Key: value
 export KV_GENERIC="generic" # Path: gen/test, Key: value
+export KV1SPECIFIC="old" # Path: old/test, Key: value
 export GENERIC_SECRET="generic" # Path: gen/test, Key: value
 export KV_SECRET="old" # Path: old/test, Key: value
 export KV2_SECRET="default" # Path: secret/oldstyle, Key: value

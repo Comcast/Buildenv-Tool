@@ -11,8 +11,9 @@ import (
 )
 
 type Reader struct {
-	client *vault.Client
-	mounts Mounts
+	client          *vault.Client
+	canDetectMounts bool
+	mounts          Mounts
 }
 
 type EnvVars map[string]string
@@ -65,21 +66,21 @@ func (s KVSecretBlock) GetOutput(ctx context.Context, r *Reader) (OutputList, er
 		}
 	}
 
-	// The first thing we need to do is get the mount point for the KV engine
+	// Get the Mount Point for the Secret
 	mountPoint, secretPath := r.MountAndPath(s.Path)
 	if mountPoint == "" {
 		return nil, fmt.Errorf("no mount point found for path %s", s.Path)
 	}
 
-	// V2 KV Secrets
-	if r.mounts[mountPoint].Type == "kv" && r.mounts[mountPoint].Version == "2" {
+	// Assume v2 if we can detect mounts and it's a KV engine, or if it's explicitly v2
+	if !r.canDetectMounts || (r.mounts[mountPoint].Type == "kv" && r.mounts[mountPoint].Version == "2") {
 		// Get Secret
 		resp, err := r.client.Secrets.KvV2Read(ctx, secretPath, vault.WithMountPath(mountPoint))
 		if err != nil {
 			if vault.IsErrorStatus(err, http.StatusNotFound) {
-				return nil, fmt.Errorf("secret does not exist: '%s'", s.Path)
+				return nil, fmt.Errorf("kv2 secret does not exist: '%s'", s.Path)
 			}
-			return nil, fmt.Errorf("error reading path '%s': %w", s.Path, err)
+			return nil, fmt.Errorf("error reading kv2 path '%s': %w", s.Path, err)
 		}
 		// For testing purposes, we want to order this
 		envVars := []string{}
@@ -103,7 +104,7 @@ func (s KVSecretBlock) GetOutput(ctx context.Context, r *Reader) (OutputList, er
 		// Treat it as a KVv1 secret
 		resp, err := r.client.Secrets.KvV1Read(ctx, secretPath, vault.WithMountPath(mountPoint))
 		if err != nil {
-			return nil, fmt.Errorf("error reading path %s: %w", s.Path, err)
+			return nil, fmt.Errorf("error reading kv1 path %s: %w", s.Path, err)
 		}
 		for varName, varKey := range s.Vars {
 			if _, hasValue := resp.Data[varKey]; !hasValue {
@@ -133,23 +134,83 @@ func (s KVSecrets) GetOutput(ctx context.Context, r *Reader) (OutputList, error)
 	return output, nil
 }
 
+// KV1Secrets is a list of Key-Value Version 1 Secrets
+type KV1Secrets []KV1SecretBlock
+
+type KV1SecretBlock struct {
+	Path string
+	Vars KVSecret
+}
+
+func (s KV1SecretBlock) GetOutput(ctx context.Context, r *Reader) (OutputList, error) {
+	output := OutputList{}
+
+	// Initialize the Vault Client if Necessary
+	if r.client == nil {
+		err := r.InitVault()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// The first thing we need to do is get the mount point for the KV engine
+	mountPoint, secretPath := r.MountAndPath(s.Path)
+	if mountPoint == "" {
+		return nil, fmt.Errorf("no mount point found for path %s", s.Path)
+	}
+
+	// Treat it as a KVv1 secret
+	resp, err := r.client.Secrets.KvV1Read(ctx, secretPath, vault.WithMountPath(mountPoint))
+	if err != nil {
+		return nil, fmt.Errorf("error reading kv1 path %s: %w", s.Path, err)
+	}
+	for varName, varKey := range s.Vars {
+		if _, hasValue := resp.Data[varKey]; !hasValue {
+			return nil, fmt.Errorf("key %s not found in path %s", varKey, s.Path)
+		}
+		val := fmt.Sprintf("%s", resp.Data[varKey])
+		output = append(output, Output{
+			Key:     varName,
+			Value:   val,
+			Comment: fmt.Sprintf("Path: %s, Key: %s", s.Path, varKey),
+		})
+	}
+
+	return output, nil
+}
+
+func (s KV1Secrets) GetOutput(ctx context.Context, r *Reader) (OutputList, error) {
+	output := OutputList{}
+	for _, block := range s {
+		blockOutput, err := block.GetOutput(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, blockOutput...)
+	}
+	return output, nil
+}
+
 type DC struct {
-	Vars      EnvVars   `yaml:"vars,omitempty"`
-	Secrets   Secrets   `yaml:"secrets,omitempty"`
-	KVSecrets KVSecrets `yaml:"kv_secrets,omitempty"`
+	Vars       EnvVars   `yaml:"vars,omitempty"`
+	Secrets    Secrets   `yaml:"secrets,omitempty"`
+	KVSecrets  KVSecrets `yaml:"kv_secrets,omitempty"`
+	KV1Secrets KVSecrets `yaml:"kv1_secrets,omitempty"`
 }
 
 type Environment struct {
-	Vars      EnvVars       `yaml:"vars,omitempty"`
-	Secrets   Secrets       `yaml:"secrets,omitempty"`
-	KVSecrets KVSecrets     `yaml:"kv_secrets,omitempty"`
-	Dcs       map[string]DC `yaml:"dcs,omitempty"`
+	Vars       EnvVars       `yaml:"vars,omitempty"`
+	Secrets    Secrets       `yaml:"secrets,omitempty"`
+	KVSecrets  KVSecrets     `yaml:"kv_secrets,omitempty"`
+	KV1Secrets KVSecrets     `yaml:"kv1_secrets,omitempty"`
+	Dcs        map[string]DC `yaml:"dcs,omitempty"`
 }
 
 type Variables struct {
 	Vars         EnvVars                `yaml:"vars,omitempty"`
 	Secrets      Secrets                `yaml:"secrets,omitempty"`
 	KVSecrets    KVSecrets              `yaml:"kv_secrets,omitempty"`
+	KV1Secrets   KVSecrets              `yaml:"kv1_secrets,omitempty"`
 	Environments map[string]Environment `yaml:"environments,omitempty"`
 }
 
@@ -192,29 +253,30 @@ func (r *Reader) InitVault() error {
 		return err
 	}
 	r.client = vaultClient
+	r.canDetectMounts = false
 
 	// Get mount info
 	resp, err := vaultClient.System.MountsListSecretsEngines(context.Background())
-	if err != nil {
-		return fmt.Errorf("failure reading secret mounts: %w", err)
-	}
-
-	mounts := Mounts{}
-	for mount, details := range resp.Data {
-		detailMap := details.(map[string]interface{})
-		thisMount := MountInfo{
-			Type: detailMap["type"].(string),
-		}
-		if options, hasOptions := detailMap["options"]; hasOptions && options != nil {
-			optionMap := options.(map[string]interface{})
-			if version, hasVersion := optionMap["version"]; hasVersion {
-				thisMount.Version = version.(string)
+	if err == nil {
+		r.canDetectMounts = true
+		mounts := Mounts{}
+		for mount, details := range resp.Data {
+			detailMap := details.(map[string]interface{})
+			thisMount := MountInfo{
+				Type: detailMap["type"].(string),
 			}
+			if options, hasOptions := detailMap["options"]; hasOptions && options != nil {
+				optionMap := options.(map[string]interface{})
+				if version, hasVersion := optionMap["version"]; hasVersion {
+					thisMount.Version = version.(string)
+				}
+			}
+			mounts[mount] = thisMount
 		}
-		mounts[mount] = thisMount
+
+		r.mounts = mounts
 	}
 
-	r.mounts = mounts
 	return nil
 }
 
@@ -223,10 +285,16 @@ func NewReader() (*Reader, error) {
 }
 
 func (r *Reader) MountAndPath(path string) (string, string) {
-	for mount := range r.mounts {
-		if strings.HasPrefix(path, mount) {
-			return mount, strings.TrimPrefix(path, mount)
+	if r.canDetectMounts {
+		for mount := range r.mounts {
+			if strings.HasPrefix(path, mount) {
+				return mount, strings.TrimPrefix(path, mount)
+			}
 		}
+	} else {
+		// Take the first part of the path
+		parts := strings.SplitN(path, "/", 2)
+		return parts[0], parts[1]
 	}
 	return "", ""
 }
@@ -246,6 +314,11 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 		return nil, fmt.Errorf("kv secret error: %w", err)
 	}
 	output = append(output, kvOut...)
+	kv1Out, err := input.KV1Secrets.GetOutput(ctx, r)
+	if err != nil {
+		return nil, fmt.Errorf("kv1 secret error: %w", err)
+	}
+	output = append(output, kv1Out...)
 	secretOut, err := input.Secrets.GetOutput(ctx, r)
 	if err != nil {
 		return nil, fmt.Errorf("secret error: %w", err)
@@ -258,11 +331,19 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 			Comment: fmt.Sprintf("Environment: %s", env),
 		})
 		output = append(output, input.Environments[env].Vars.GetOutput()...)
+		// KV (autodetect or v2)
 		kvOut, err := input.Environments[env].KVSecrets.GetOutput(ctx, r)
 		if err != nil {
 			return nil, fmt.Errorf("kv secret error: %w", err)
 		}
 		output = append(output, kvOut...)
+		// KV1
+		kv1Out, err := input.Environments[env].KV1Secrets.GetOutput(ctx, r)
+		if err != nil {
+			return nil, fmt.Errorf("kv1 secret error: %w", err)
+		}
+		output = append(output, kv1Out...)
+		// Secrets
 		secretOut, err := input.Environments[env].Secrets.GetOutput(ctx, r)
 		if err != nil {
 			return nil, fmt.Errorf("secret error: %w", err)
@@ -276,11 +357,19 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 			Comment: fmt.Sprintf("Datacenter: %s", dc),
 		})
 		output = append(output, input.Environments[env].Dcs[dc].Vars.GetOutput()...)
+		// KV (autodetect or v2)
 		kvOut, err := input.Environments[env].Dcs[dc].KVSecrets.GetOutput(ctx, r)
 		if err != nil {
 			return nil, fmt.Errorf("kv secret error: %w", err)
 		}
 		output = append(output, kvOut...)
+		// KV1
+		kv1Out, err := input.Environments[env].Dcs[dc].KV1Secrets.GetOutput(ctx, r)
+		if err != nil {
+			return nil, fmt.Errorf("kv1 secret error: %w", err)
+		}
+		output = append(output, kv1Out...)
+		// Secrets
 		secretOut, err := input.Environments[env].Dcs[dc].Secrets.GetOutput(ctx, r)
 		if err != nil {
 			return nil, fmt.Errorf("secret error: %w", err)
