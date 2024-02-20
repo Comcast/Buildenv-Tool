@@ -20,6 +20,6 @@ build-local: test
 	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)" -o $(PROJECT_NAME)
 
 clean:
-	rm -r buildenv
+	rm -rf buildenv
 	rm -f *.tar.gz
 	rm -rf pkg
