@@ -74,7 +74,17 @@ export DC="one"
 export KV2_THREE="3" # Path: old/test, Key: three
 ```
 
+Another mode uses -r to run a command.  All exports will be provided directly to a subshell invoked with the command.  This is especially useful in the context of a Makefile where it's very awkward to export lists of environment variables. An added benefit is it's now trivial to set environment variables just for a single command without causing any side-effects for subsequent commands.
+
+Example Makefile:
+
+```
+list-buckets: creds.yml
+ buildenv -e stage -f $< -r "aws s3 ls"
+```
+
 *A Note About Vault:* If you have `secrets` or `kv_secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path & key in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
+
 
 Running on Linux or in Docker container
 ----------

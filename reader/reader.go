@@ -2,8 +2,11 @@ package reader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
 	"slices"
 	"strings"
 
@@ -229,6 +232,36 @@ type Output struct {
 	Comment string
 }
 type OutputList []Output
+
+func (o OutputList) Exec(shell_cmd string) int {
+	shell, shell_isset := os.LookupEnv("SHELL")
+
+	var cmd *exec.Cmd
+
+	if shell_isset {
+		cmd = exec.Command(shell, "-c", shell_cmd)
+	} else {
+		cmd = exec.Command("/usr/bin/env", "bash", "-c", shell_cmd)
+	}
+
+	for _, out := range o {
+		s := fmt.Sprintf("%s=%s", out.Key, out.Value)
+		cmd.Env = append(cmd.Environ(), s)
+	}
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			return exitError.ExitCode()
+		}
+		return -1
+	}
+	return 0
+}
 
 func (o OutputList) Print(showComments bool) {
 	for _, out := range o {

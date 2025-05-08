@@ -1,10 +1,13 @@
 package reader
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
 
@@ -624,6 +627,102 @@ func TestSkipVault_Reader(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Reader.Read() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOutputList_Exec(t *testing.T) {
+	key := "BuildEnvTestKey"
+	val := "BuildEnvTestVal"
+	outputList := OutputList{
+		Output{key, val, "acomment"},
+	}
+
+	type fields struct {
+		Key string
+		Val string
+		Out OutputList
+	}
+
+	type args struct {
+		cmd string
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr int
+	}{
+		{
+			name: "Good Simple Cmd",
+			args: args{
+				cmd: "echo -n hi",
+			},
+			fields: fields{
+				Key: key,
+				Val: val,
+				Out: outputList,
+			},
+			want:    "hi",
+			wantErr: 0,
+		},
+		{
+			name: "Bad Cmd",
+			args: args{
+				cmd: "./nosuchcommandprobably",
+			},
+			fields: fields{
+				Key: key,
+				Val: val,
+				Out: outputList,
+			},
+			want:    "",
+			wantErr: 127,
+		},
+		{
+			name: "Has Env Var val",
+			args: args{
+				cmd: "echo -n ${" + key + "}",
+			},
+			fields: fields{
+				Key: key,
+				Val: val,
+				Out: outputList,
+			},
+			want:    val,
+			wantErr: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldstdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			got := tt.fields.Out.Exec(tt.args.cmd)
+
+			outC := make(chan string)
+
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				outC <- buf.String()
+			}()
+
+			w.Close()
+
+			out := <-outC
+
+			os.Stdout = oldstdout
+
+			if out != tt.want {
+				t.Errorf("OutputList.Exec() output = %v, want %v", out, tt.want)
+			}
+			if got != tt.wantErr {
+				t.Errorf("OutputList.Exec() err = %v, wantErr %v", got, tt.wantErr)
 			}
 		})
 	}
