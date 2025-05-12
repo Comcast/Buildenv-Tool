@@ -139,7 +139,7 @@ func TestKVSecretBlock_GetOutputNoDetect(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", r)
 		var resp []byte
-		var status = http.StatusOK
+		status := http.StatusOK
 
 		// KV Data
 		switch r.URL.Path {
@@ -268,15 +268,13 @@ func TestKVSecretBlock_GetOutputNoDetect(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestKVSecretBlock_GetOutput(t *testing.T) {
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", r)
 		var resp []byte
-		var status = http.StatusOK
+		status := http.StatusOK
 
 		// KV Data
 		switch r.URL.Path {
@@ -440,11 +438,10 @@ func TestKVSecretBlock_GetOutput(t *testing.T) {
 }
 
 func TestKV1SecretBlock_GetOutput(t *testing.T) {
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", r)
 		var resp []byte
-		var status = http.StatusOK
+		status := http.StatusOK
 
 		// KV Data
 		switch r.URL.Path {
@@ -554,6 +551,79 @@ func TestKV1SecretBlock_GetOutput(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("KVSecretBlock.GetOutput() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSkipVault_Reader(t *testing.T) {
+	reader, _ := NewReader(WithSkipVault(true))
+
+	type args struct {
+		r    *Reader
+		i    *Variables
+		env  string
+		dc   string
+		skip bool
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    OutputList
+		wantErr bool
+	}{
+		{
+			name: "Has Secrets",
+			args: args{
+				skip: true,
+				env:  "dev",
+				dc:   "us-least-1",
+				r:    reader,
+				i: &Variables{
+					Vars: EnvVars{
+						"XYZ": "yep",
+					},
+					Secrets: Secrets{
+						"Secret1": "it's here",
+					},
+					KVSecrets: KVSecrets{{
+						Path: "path/test",
+						Vars: KVSecret{"KVSecret1": "kvsecret1"},
+					}},
+					KV1Secrets: KVSecrets{{
+						Path: "path2/test",
+						Vars: KVSecret{
+							"KV1Secret1": "another one",
+						},
+					}},
+				},
+			},
+			want: OutputList{
+				{
+					Comment: "Global Variables",
+				},
+				{Key: "XYZ", Value: "yep", Comment: ""},
+				{
+					Comment: "Environment: dev",
+				},
+				{
+					Comment: "Datacenter: us-least-1",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := tt.args.r.Read(ctx, tt.args.i, tt.args.env, tt.args.dc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Reader.Read() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Reader.Read() = %v, want %v", got, tt.want)
 			}
 		})
 	}
