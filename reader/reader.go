@@ -12,8 +12,17 @@ import (
 
 type Reader struct {
 	client          *vault.Client
+	skipVault       bool
 	canDetectMounts bool
 	mounts          Mounts
+}
+
+type ReaderOptFunc func(*Reader)
+
+func WithSkipVault(skip bool) ReaderOptFunc {
+	return func(r *Reader) {
+		r.skipVault = skip
+	}
 }
 
 type EnvVars map[string]string
@@ -248,6 +257,10 @@ type MountInfo struct {
 type Mounts map[string]MountInfo
 
 func (r *Reader) InitVault() error {
+	if r.skipVault {
+		return nil
+	}
+
 	vaultClient, err := vault.New(vault.WithEnvironment())
 	if err != nil {
 		return err
@@ -280,8 +293,12 @@ func (r *Reader) InitVault() error {
 	return nil
 }
 
-func NewReader() (*Reader, error) {
-	return &Reader{}, nil
+func NewReader(opts ...ReaderOptFunc) (*Reader, error) {
+	r := &Reader{}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r, nil
 }
 
 func (r *Reader) MountAndPath(path string) (string, string) {
@@ -308,22 +325,24 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 	})
 	output = append(output, input.Vars.GetOutput()...)
 
-	// Global Secrets
-	kvOut, err := input.KVSecrets.GetOutput(ctx, r)
-	if err != nil {
-		return nil, fmt.Errorf("kv secret error: %w", err)
+	if !r.skipVault {
+		// Global Secrets
+		kvOut, err := input.KVSecrets.GetOutput(ctx, r)
+		if err != nil {
+			return nil, fmt.Errorf("kv secret error: %w", err)
+		}
+		output = append(output, kvOut...)
+		kv1Out, err := input.KV1Secrets.GetOutput(ctx, r)
+		if err != nil {
+			return nil, fmt.Errorf("kv1 secret error: %w", err)
+		}
+		output = append(output, kv1Out...)
+		secretOut, err := input.Secrets.GetOutput(ctx, r)
+		if err != nil {
+			return nil, fmt.Errorf("secret error: %w", err)
+		}
+		output = append(output, secretOut...)
 	}
-	output = append(output, kvOut...)
-	kv1Out, err := input.KV1Secrets.GetOutput(ctx, r)
-	if err != nil {
-		return nil, fmt.Errorf("kv1 secret error: %w", err)
-	}
-	output = append(output, kv1Out...)
-	secretOut, err := input.Secrets.GetOutput(ctx, r)
-	if err != nil {
-		return nil, fmt.Errorf("secret error: %w", err)
-	}
-	output = append(output, secretOut...)
 
 	// Environment Variablers
 	if env != "" {
@@ -332,23 +351,25 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 		})
 		output = append(output, input.Environments[env].Vars.GetOutput()...)
 		// KV (autodetect or v2)
-		kvOut, err := input.Environments[env].KVSecrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("kv secret error: %w", err)
+		if !r.skipVault {
+			kvOut, err := input.Environments[env].KVSecrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("kv secret error: %w", err)
+			}
+			output = append(output, kvOut...)
+			// KV1
+			kv1Out, err := input.Environments[env].KV1Secrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("kv1 secret error: %w", err)
+			}
+			output = append(output, kv1Out...)
+			// Secrets
+			secretOut, err := input.Environments[env].Secrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("secret error: %w", err)
+			}
+			output = append(output, secretOut...)
 		}
-		output = append(output, kvOut...)
-		// KV1
-		kv1Out, err := input.Environments[env].KV1Secrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("kv1 secret error: %w", err)
-		}
-		output = append(output, kv1Out...)
-		// Secrets
-		secretOut, err := input.Environments[env].Secrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("secret error: %w", err)
-		}
-		output = append(output, secretOut...)
 	}
 
 	// DC Variables
@@ -357,24 +378,27 @@ func (r *Reader) Read(ctx context.Context, input *Variables, env string, dc stri
 			Comment: fmt.Sprintf("Datacenter: %s", dc),
 		})
 		output = append(output, input.Environments[env].Dcs[dc].Vars.GetOutput()...)
-		// KV (autodetect or v2)
-		kvOut, err := input.Environments[env].Dcs[dc].KVSecrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("kv secret error: %w", err)
+
+		if !r.skipVault {
+			// KV (autodetect or v2)
+			kvOut, err := input.Environments[env].Dcs[dc].KVSecrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("kv secret error: %w", err)
+			}
+			output = append(output, kvOut...)
+			// KV1
+			kv1Out, err := input.Environments[env].Dcs[dc].KV1Secrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("kv1 secret error: %w", err)
+			}
+			output = append(output, kv1Out...)
+			// Secrets
+			secretOut, err := input.Environments[env].Dcs[dc].Secrets.GetOutput(ctx, r)
+			if err != nil {
+				return nil, fmt.Errorf("secret error: %w", err)
+			}
+			output = append(output, secretOut...)
 		}
-		output = append(output, kvOut...)
-		// KV1
-		kv1Out, err := input.Environments[env].Dcs[dc].KV1Secrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("kv1 secret error: %w", err)
-		}
-		output = append(output, kv1Out...)
-		// Secrets
-		secretOut, err := input.Environments[env].Dcs[dc].Secrets.GetOutput(ctx, r)
-		if err != nil {
-			return nil, fmt.Errorf("secret error: %w", err)
-		}
-		output = append(output, secretOut...)
 	}
 
 	return output, nil

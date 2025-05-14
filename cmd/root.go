@@ -39,7 +39,6 @@ Values can be specified in plain text, or set from a vault server.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-
 		version, _ := cmd.Flags().GetBool("version")
 		if version {
 			fmt.Printf("buildenv version %s\n", Version)
@@ -76,8 +75,10 @@ Values can be specified in plain text, or set from a vault server.`,
 			fmt.Printf("Data:\n%s\n\n", inData)
 		}
 
+		skip_vault, _ := cmd.Flags().GetBool("skip-vault")
+
 		// Setup the Reader
-		reader, err := reader.NewReader()
+		reader, err := reader.NewReader(reader.WithSkipVault(skip_vault))
 		if err != nil {
 			fmt.Printf("Failure creating Reader: %v", err)
 			os.Exit(ErrorCodeVault)
@@ -134,7 +135,6 @@ func init() {
 	rootCmd.Flags().BoolP("comments", "c", false, "Comments will be included in output")
 	rootCmd.Flags().Bool("debug", false, "Turn on debugging output")
 	rootCmd.Flags().Bool("version", false, "Print the version number")
-
 }
 
 // initConfig reads in config file and ENV variables if set.
