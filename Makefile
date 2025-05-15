@@ -7,6 +7,7 @@ all: clean build-deps build
 
 test:
 	go test ./...
+	cram cram_tests
 
 build-deps:
 	go install github.com/mitchellh/gox@latest

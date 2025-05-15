@@ -86,6 +86,7 @@ Values can be specified in plain text, or set from a vault server.`,
 
 		// Get the Output
 		env, _ := cmd.Flags().GetString("environment")
+		run, _ := cmd.Flags().GetString("run")
 		dc, _ := cmd.Flags().GetString("datacenter")
 
 		out, err := reader.Read(ctx, &data, env, dc)
@@ -101,7 +102,11 @@ Values can be specified in plain text, or set from a vault server.`,
 
 		// Output the Exports
 		comments, _ := cmd.Flags().GetBool("comments")
-		out.Print(comments)
+		if cmd.Flags().Lookup("run").Changed {
+			os.Exit(out.Exec(run))
+		} else {
+			out.Print(comments)
+		}
 	},
 }
 
@@ -127,6 +132,7 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().StringP("environment", "e", "", "Environment (qa, dev, stage, prod, etc)")
+	rootCmd.Flags().StringP("run", "r", "", "Shell command to execute with environment")
 	rootCmd.Flags().StringP("datacenter", "d", "", "Datacenter (ndc_as_a, us-east-1 etc)")
 	rootCmd.Flags().StringP("variables_file", "f", "variables.yml", "Variables Source YAML file")
 
