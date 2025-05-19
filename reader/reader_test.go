@@ -3,6 +3,8 @@ package reader
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -723,6 +725,79 @@ func TestOutputList_Exec(t *testing.T) {
 			}
 			if got != tt.wantErr {
 				t.Errorf("OutputList.Exec() err = %v, wantErr %v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestOutputList_PrintB64Json(t *testing.T) {
+	envVars := EnvVars{
+		"BuildEnvTestKey1": "BuildEnvTestVal1",
+		"BuildEnvTestKey2": "BuildEnvTestVal2",
+	}
+
+	type fields struct {
+		Out OutputList
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		want    EnvVars
+		wantErr bool
+	}{
+		{
+			name:   "Basic 2 vars",
+			fields: fields{Out: envVars.GetOutput()},
+			want:   envVars,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldstdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			outC := make(chan string)
+
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				outC <- buf.String()
+			}()
+
+			err := tt.fields.Out.PrintB64Json()
+			if err != nil {
+				t.Errorf("PrintB64Json() error = %v", err)
+			}
+
+			os.Stdout = oldstdout
+
+			w.Close()
+
+			out := <-outC
+
+			decoded := make([]byte, base64.StdEncoding.DecodedLen(len(out)))
+			len, err := base64.StdEncoding.Decode(decoded, []byte(out))
+
+			var out_vars EnvVars
+
+			if err != nil {
+				t.Errorf("Exception parsing output: %v", err)
+				return
+			}
+
+			decoded = decoded[:len]
+
+			err = json.Unmarshal([]byte(decoded), &out_vars)
+			if err != nil {
+				t.Errorf("Exception parsing output: %v", err)
+				return
+			}
+
+			if !reflect.DeepEqual(out_vars, tt.want) {
+				t.Errorf("PrintB64Json() output = %v, want %v", out_vars, tt.want)
 			}
 		})
 	}
