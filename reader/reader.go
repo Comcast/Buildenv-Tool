@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -42,6 +43,8 @@ func (e EnvVars) GetOutput() OutputList {
 }
 
 type Secrets map[string]string
+
+var shellvar_regexp = regexp.MustCompile("^[_A-Za-z][A-Za-z0-9_]*$")
 
 func (s Secrets) GetOutput(ctx context.Context, r *Reader) (OutputList, error) {
 	// Read it like a kv secrets where all keys are "value"
@@ -245,8 +248,10 @@ func (o OutputList) Exec(shell_cmd string) int {
 	}
 
 	for _, out := range o {
-		s := fmt.Sprintf("%s=%s", out.Key, out.Value)
-		cmd.Env = append(cmd.Environ(), s)
+		if shellvar_regexp.MatchString(out.Key) {
+			s := fmt.Sprintf("%s=%s", out.Key, out.Value)
+			cmd.Env = append(cmd.Environ(), s)
+		}
 	}
 
 	cmd.Stdin = os.Stdin
@@ -265,19 +270,19 @@ func (o OutputList) Exec(shell_cmd string) int {
 
 func (o OutputList) Print(showComments bool) {
 	for _, out := range o {
-		keySpace := ""
-		nl := false
-		if out.Key != "" {
-			fmt.Printf("export %s=%q", out.Key, out.Value)
-			keySpace = " "
-			nl = true
-		}
-		if out.Comment != "" && showComments {
-			fmt.Printf("%s# %s", keySpace, out.Comment)
-			nl = true
-		}
-		if nl {
-			fmt.Println()
+		if out.Key == "" {
+			if showComments && out.Comment != "" {
+				fmt.Printf("# %s\n", out.Comment)
+			}
+		} else {
+			/* silently discards variable names that are not shell safe */
+			if shellvar_regexp.MatchString(out.Key) {
+				fmt.Printf("export %s=%q", out.Key, out.Value)
+				if out.Comment != "" && showComments {
+					fmt.Printf(" # %s", out.Comment)
+				}
+				fmt.Println()
+			}
 		}
 	}
 }
