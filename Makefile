@@ -5,7 +5,7 @@ PROJECT_NAME := buildenv
 
 all: clean build-deps build
 
-test:
+test: build-local
 	go test ./...
 	cram cram_tests
 
@@ -17,7 +17,7 @@ build: test
 	for pkg in $$(ls pkg/); do cp CONTRIBUTING.md CONTRIBUTORS.md LICENSE NOTICE pkg/$${pkg}; done
 	for pkg in $$(ls pkg/); do cd pkg/$${pkg}; tar cvzf "../../$(PROJECT_NAME)-$${pkg}-$(VERSION).tar.gz" *; cd ../..; done
 
-build-local: test
+build-local:
 	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)" -o $(PROJECT_NAME)
 
 clean:

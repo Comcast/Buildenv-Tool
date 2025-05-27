@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-alias be="${TESTDIR}/../Buildenv-Tool -f ${TESTDIR}/../no_secrets.yml"
-
+alias be="${TESTDIR}/../buildenv -f ${TESTDIR}/../no_secrets.yml"
