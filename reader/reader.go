@@ -2,6 +2,8 @@ package reader
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -266,6 +268,26 @@ func (o OutputList) Exec(shell_cmd string) int {
 		return -1
 	}
 	return 0
+}
+
+func (ol OutputList) PrintB64Json() error {
+	envs := EnvVars{}
+
+	for _, o := range ol {
+		if o.Key != "" {
+			envs[o.Key] = o.Value
+		}
+	}
+
+	serialized, err := json.Marshal(envs)
+	if err != nil {
+		return err
+	}
+	encoded := base64.StdEncoding.EncodeToString(serialized)
+
+	fmt.Print(encoded)
+
+	return nil
 }
 
 func (o OutputList) Print(showComments bool) {

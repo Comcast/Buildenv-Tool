@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -24,6 +25,10 @@ const (
 	ErrorCodeYaml = 5
 	// ErrorCodeVault Exit Code for Vault Errors
 	ErrorCodeVault = 6
+	// ErrorCodeInput Exit Code for Bad Input
+	ErrorCodeInput = 7
+	// ErrorCodeOutput Exit Code for Failed Serialization/Output
+	ErrorCodeOutput = 8
 )
 
 var cfgFile string
@@ -78,7 +83,7 @@ Values can be specified in plain text, or set from a vault server.`,
 		skip_vault, _ := cmd.Flags().GetBool("skip-vault")
 
 		// Setup the Reader
-		reader, err := reader.NewReader(reader.WithSkipVault(skip_vault))
+		rdr, err := reader.NewReader(reader.WithSkipVault(skip_vault))
 		if err != nil {
 			fmt.Printf("Failure creating Reader: %v", err)
 			os.Exit(ErrorCodeVault)
@@ -89,7 +94,7 @@ Values can be specified in plain text, or set from a vault server.`,
 		run, _ := cmd.Flags().GetString("run")
 		dc, _ := cmd.Flags().GetString("datacenter")
 
-		out, err := reader.Read(ctx, &data, env, dc)
+		out, err := rdr.Read(ctx, &data, env, dc)
 		if err != nil {
 			fmt.Printf("Failure reading data: %v", err)
 			os.Exit(ErrorCodeVault)
@@ -100,12 +105,54 @@ Values can be specified in plain text, or set from a vault server.`,
 			fmt.Printf("Output:\n%s\n\n", outData)
 		}
 
+		var use_vars reader.EnvVars
+
+		use, err := cmd.Flags().GetStringArray("use")
+		if err != nil {
+			fmt.Printf("Could not get \"use\" (-u) flag values: %v", err)
+			os.Exit(ErrorCodeInput)
+		}
+
+		for _, use_inst := range use {
+			blob := os.Getenv(use_inst)
+			decoded := make([]byte, base64.StdEncoding.DecodedLen(len(blob)))
+			len, err := base64.StdEncoding.Decode(decoded, []byte(blob))
+			if err != nil {
+				fmt.Printf("Could not decode input to flag \"use\" (-u): %v", err)
+				os.Exit(ErrorCodeInput)
+			}
+			decoded = decoded[:len]
+			/* It adds to the structure, merging matching keys */
+			err = json.Unmarshal([]byte(decoded), &use_vars)
+			if err != nil {
+				fmt.Printf("Could not decode input to flag \"use\" (-u): %v", err)
+				os.Exit(ErrorCodeInput)
+			}
+		}
+
+		vars_out := use_vars.GetOutput()
+		out = append(out, vars_out...)
+
 		// Output the Exports
 		comments, _ := cmd.Flags().GetBool("comments")
 		if cmd.Flags().Lookup("run").Changed {
 			os.Exit(out.Exec(run))
 		} else {
-			out.Print(comments)
+			encoded_export, err := cmd.Flags().GetBool("export")
+			if err != nil {
+				fmt.Printf("Failure reading export flag: %v", err)
+				os.Exit(ErrorCodeInput)
+			}
+
+			if encoded_export {
+				err = out.PrintB64Json()
+				if err != nil {
+					fmt.Printf("Failure printing output: %v", err)
+					os.Exit(ErrorCodeOutput)
+				}
+			} else {
+				out.Print(comments)
+			}
 		}
 	},
 }
@@ -141,6 +188,8 @@ func init() {
 	rootCmd.Flags().BoolP("comments", "c", false, "Comments will be included in output")
 	rootCmd.Flags().Bool("debug", false, "Turn on debugging output")
 	rootCmd.Flags().Bool("version", false, "Print the version number")
+	rootCmd.Flags().StringArrayP("use", "u", []string{}, "Use Stored Vars from named environment variable. Contents should be base64 encoded JSON.")
+	rootCmd.Flags().BoolP("export", "x", false, "Print Vars as base64 encoded json")
 }
 
 // initConfig reads in config file and ENV variables if set.
