@@ -83,8 +83,33 @@ list-buckets: creds.yml
  buildenv -e stage -f $< -r "aws s3 ls"
 ```
 
-*A Note About Vault:* If you have `secrets` or `kv_secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path & key in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
+If it's necessary to merge or save a set of variables (for example, so that vault does not need to be called repeatedly), the -u option allows for saving and using a set of variables from the environment without writing possibly sensitive data out to a file:
 
+```bash
+% export SAVED_ENV=`echo '{"example_var": "the value"}' | base64`
+% buildenv -u SAVED_ENV -f /dev/null
+export example_var="the value"
+```
+
+This takes a base64 encoded json object with key-value pairs and treats them as additional input variables.  The corresponding flag for export in the same format is -x:
+
+```bash
+% buildenv -u SAVED_ENV -f /dev/null -x | base64 -d
+{"example_var":"the value"}
+```
+
+Multiple -u options can be used as well as combined with -f to combine multiple sources.  Given the above variables.yml:
+
+```bash
+% export SAVED_ENV=`echo '{"example_var": "the value"}' | base64`
+% export SAVED_ENV2=`echo '{"another_var": "another value"}' | base64`
+% buildenv -u SAVED_ENV -u SAVED_ENV2 -v
+export GLOBAL="global"
+export example_var="the value"
+export another_var="another value"
+```
+
+*A Note About Vault:* If you have `secrets` or `kv_secrets` defined in either the global or environment scope, it's a mapping from environment variable to the path & key in vault. Buildenv uses all the standard vault environment variables to communicate with vault (`VAULT_ADDR` and `VAULT_TOKEN` being the two you're most likely to use.) You can find the complete list [in the vault client docs](https://pkg.go.dev/github.com/hashicorp/vault-client-go@v0.4.2#WithEnvironment).
 
 Running on Linux or in Docker container
 ----------
