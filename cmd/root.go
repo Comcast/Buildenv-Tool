@@ -81,6 +81,10 @@ Values can be specified in plain text, or set from a vault server.`,
 		}
 
 		skip_vault, _ := cmd.Flags().GetBool("skip-vault")
+		if !skip_vault && os.Getenv("VAULT_TOKEN") == "" {
+			fmt.Println("VAULT_TOKEN is not set, and --skip-vault is not set. Exiting.")
+			os.Exit(ErrorCodeEnv)
+		}
 
 		// Setup the Reader
 		rdr, err := reader.NewReader(reader.WithSkipVault(skip_vault))
