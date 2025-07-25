@@ -251,7 +251,7 @@ func (o OutputList) Exec(shell_cmd string) int {
 
 	for _, out := range o {
 		if shellvar_regexp.MatchString(out.Key) {
-			s := fmt.Sprintf("%s=%s", out.Key, out.Value)
+			s := fmt.Sprintf("%s=%s", out.Key, strings.TrimSuffix(out.Value, "\n"))
 			cmd.Env = append(cmd.Environ(), s)
 		}
 	}
@@ -275,7 +275,7 @@ func (ol OutputList) PrintB64Json() error {
 
 	for _, o := range ol {
 		if o.Key != "" {
-			envs[o.Key] = o.Value
+			envs[o.Key] = strings.TrimSuffix(o.Value, "\n")
 		}
 	}
 
@@ -299,7 +299,8 @@ func (o OutputList) Print(showComments bool) {
 		} else {
 			/* silently discards variable names that are not shell safe */
 			if shellvar_regexp.MatchString(out.Key) {
-				fmt.Printf("export %s=%q", out.Key, out.Value)
+				value := strings.TrimSuffix(out.Value, "\n")
+				fmt.Printf("export %s=%q", out.Key, value)
 				if out.Comment != "" && showComments {
 					fmt.Printf(" # %s", out.Comment)
 				}
