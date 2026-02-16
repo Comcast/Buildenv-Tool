@@ -596,7 +596,7 @@ func TestSkipVault_Reader(t *testing.T) {
 						Path: "path/test",
 						Vars: KVSecret{"KVSecret1": "kvsecret1"},
 					}},
-					KV1Secrets: KVSecrets{{
+					KV1Secrets: KV1Secrets{{
 						Path: "path2/test",
 						Vars: KVSecret{
 							"KV1Secret1": "another one",
