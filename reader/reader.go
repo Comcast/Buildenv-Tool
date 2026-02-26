@@ -209,17 +209,17 @@ func (s KV1Secrets) GetOutput(ctx context.Context, r *Reader) (OutputList, error
 }
 
 type DC struct {
-	Vars       EnvVars   `yaml:"vars,omitempty"`
-	Secrets    Secrets   `yaml:"secrets,omitempty"`
-	KVSecrets  KVSecrets `yaml:"kv_secrets,omitempty"`
-	KV1Secrets KVSecrets `yaml:"kv1_secrets,omitempty"`
+	Vars       EnvVars    `yaml:"vars,omitempty"`
+	Secrets    Secrets    `yaml:"secrets,omitempty"`
+	KVSecrets  KVSecrets  `yaml:"kv_secrets,omitempty"`
+	KV1Secrets KV1Secrets `yaml:"kv1_secrets,omitempty"`
 }
 
 type Environment struct {
 	Vars       EnvVars       `yaml:"vars,omitempty"`
 	Secrets    Secrets       `yaml:"secrets,omitempty"`
 	KVSecrets  KVSecrets     `yaml:"kv_secrets,omitempty"`
-	KV1Secrets KVSecrets     `yaml:"kv1_secrets,omitempty"`
+	KV1Secrets KV1Secrets    `yaml:"kv1_secrets,omitempty"`
 	Dcs        map[string]DC `yaml:"dcs,omitempty"`
 }
 
@@ -227,7 +227,7 @@ type Variables struct {
 	Vars         EnvVars                `yaml:"vars,omitempty"`
 	Secrets      Secrets                `yaml:"secrets,omitempty"`
 	KVSecrets    KVSecrets              `yaml:"kv_secrets,omitempty"`
-	KV1Secrets   KVSecrets              `yaml:"kv1_secrets,omitempty"`
+	KV1Secrets   KV1Secrets             `yaml:"kv1_secrets,omitempty"`
 	Environments map[string]Environment `yaml:"environments,omitempty"`
 }
 
